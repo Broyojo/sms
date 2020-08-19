@@ -26,7 +26,7 @@ func main() {
 	})
 	check(err)
 	svc := sns.New(sess)
-	const message = "doctor jin has retired, see dr. seuss instead!"
+	const message = "this is a test of david's project"
 	numbers := strings.Split("+19176086254,+19175139575,+19087235723", ",")
 	for _, n := range numbers {
 		log.Printf("sending to %q:\n", n)
