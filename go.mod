@@ -3,7 +3,7 @@ module github.com/xoba/sms
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go v1.34.7
+	github.com/aws/aws-sdk-go v1.34.8
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1 // indirect
@@ -14,6 +14,9 @@ require (
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.1.0 // indirect
+	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
+	golang.org/x/sys v0.0.0-20200819171115-d785dc25833f // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
+	google.golang.org/protobuf v1.25.0 // indirect
 )
