@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -43,8 +44,13 @@ func makeCall(to string) error {
 	if err != nil {
 		return fmt.Errorf("can't make call: %w", err)
 	}
-	fmt.Println(call)
+	dump(call)
 	return nil
+}
+
+func dump(i interface{}) {
+	buf, _ := json.MarshalIndent(i, "", "  ")
+	fmt.Println(string(buf))
 }
 
 func main() {
