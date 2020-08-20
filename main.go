@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,10 +24,9 @@ output = json
 region = us-east-1
 */
 
-func makeCall() error {
+func makeCall(to string) error {
 	const (
 		sid  = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
-		to   = "+19176086254"
 		from = "+19083889127"
 	)
 	const tokenfile = "twilio.txt"
@@ -41,19 +41,30 @@ func makeCall() error {
 	}
 	call, err := client.Calls.MakeCall(from, to, callURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't make call: %w", err)
 	}
 	fmt.Println(call)
 	return nil
 }
 
 func main() {
-	check(makeCall())
-	return
+	if err := Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func Run() error {
+	var to string
+	flag.StringVar(&to, "to", "+19176086254", "phone number to call")
+	flag.Parse()
+
+	return makeCall(to)
 
 	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
 	sess, err := session.NewSession()
-	check(err)
+	if err != nil {
+		return fmt.Errorf("can't create session: %w", err)
+	}
 	svc := sns.New(sess)
 	const message = "this is a test of david's project"
 	numbers := strings.Split("+19176086254,+19175139575,+19087235723", ",")
@@ -69,18 +80,17 @@ func main() {
 				},
 			},
 		})
-		check(err)
+		if err != nil {
+			return fmt.Errorf("can't publish: %w", err)
+		}
 		log.Printf("response: %v\n", o)
-		check(limiter.Wait(context.Background()))
+		if err := limiter.Wait(context.Background()); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // need to request limit increase above $1/month:
 // https://aws.amazon.com/premiumsupport/knowledge-center/sns-sms-spending-limit-increase/#:~:text=Amazon%20SNS%20limits%20the%20amount,through%20the%20AWS%20Support%20Center.
 // https://console.aws.amazon.com/support/home#/case/create?issueType=service-limit-increase&limitType=service-code-sns-text-messaging
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
