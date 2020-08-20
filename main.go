@@ -30,7 +30,7 @@ func makeCall() error {
 		from  = "+19083889127"
 	)
 	client := twilio.NewClient(sid, token, nil)
-	callURL, err := url.Parse("http://soundbible.com/grab.php?id=2026&type=mp3")
+	callURL, err := url.Parse("https://broyojo.com/twilio")
 	check(err)
 	call, err := client.Calls.MakeCall(from, to, callURL)
 	check(err)
