@@ -26,7 +26,7 @@ region = us-east-1
 func makeCall() error {
 	const (
 		sid  = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
-		to   = "+19087235723"
+		to   = "+19176086254"
 		from = "+19083889127"
 	)
 	const tokenfile = "twilio.txt"
@@ -52,9 +52,7 @@ func main() {
 	return
 
 	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	sess, err := session.NewSession()
 	check(err)
 	svc := sns.New(sess)
 	const message = "this is a test of david's project"
