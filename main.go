@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/kevinburke/twilio-go"
 	"golang.org/x/time/rate"
 )
 
@@ -19,7 +22,26 @@ output = json
 region = us-east-1
 */
 
+func makeCall() error {
+	const (
+		sid   = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
+		token = "d96928609c2b18f217ae976707198dfd"
+		to    = "+19176086254"
+		from  = "+19083889127"
+	)
+	client := twilio.NewClient(sid, token, nil)
+	callURL, err := url.Parse("http://soundbible.com/grab.php?id=2026&type=mp3")
+	check(err)
+	call, err := client.Calls.MakeCall(from, to, callURL)
+	check(err)
+	fmt.Println(call)
+	return nil
+}
+
 func main() {
+	check(makeCall())
+	return
+
 	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
