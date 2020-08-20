@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"strings"
@@ -24,16 +25,24 @@ region = us-east-1
 
 func makeCall() error {
 	const (
-		sid   = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
-		token = "d96928609c2b18f217ae976707198dfd"
-		to    = "+19176086254"
-		from  = "+19083889127"
+		sid  = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
+		to   = "+19087235723"
+		from = "+19083889127"
 	)
-	client := twilio.NewClient(sid, token, nil)
+	const tokenfile = "twilio.txt"
+	token, err := ioutil.ReadFile(tokenfile)
+	if err != nil {
+		return fmt.Errorf("needs token file %q: %w", tokenfile, err)
+	}
+	client := twilio.NewClient(sid, strings.TrimSpace(string(token)), nil)
 	callURL, err := url.Parse("https://broyojo.com/twilio")
-	check(err)
+	if err != nil {
+		return err
+	}
 	call, err := client.Calls.MakeCall(from, to, callURL)
-	check(err)
+	if err != nil {
+		return err
+	}
 	fmt.Println(call)
 	return nil
 }
