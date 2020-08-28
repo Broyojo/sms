@@ -26,7 +26,24 @@ type ContactInfo struct {
 func (c ContactInfo) Decisions() ([]Decision, error) {
 	var out []Decision
 	add := func(d Decision) {
+		if err := d.Validate(); err != nil {
+			return
+		}
 		out = append(out, d)
+	}
+	none := func() {
+		if c.Email != "" {
+			add(NewEmail(c.Email))
+		}
+		switch {
+		case c.Mobile != "":
+			add(NewPhone(c.Mobile))
+			add(NewSMS(c.Mobile))
+		case c.Home != "":
+			add(NewPhone(c.Home))
+		case c.Office != "":
+			add(NewPhone(c.Office))
+		}
 	}
 	switch c.Preferred {
 	case Email:
@@ -38,17 +55,17 @@ func (c ContactInfo) Decisions() ([]Decision, error) {
 	case Office:
 		add(NewPhone(c.Office))
 	case NoneSpecified:
-		switch {
-		case c.Mobile != "":
-			add(NewPhone(c.Mobile))
-			add(NewSMS(c.Mobile))
-		case c.Home != "":
-			add(NewPhone(c.Home))
-		case c.Office != "":
-			add(NewPhone(c.Office))
-		}
+		none()
 	default:
 		return nil, fmt.Errorf("unknown preferred for %s", c)
+	}
+	for _, d := range out {
+		if err := d.Validate(); err != nil {
+			return nil, err
+		}
+	}
+	if len(out) == 0 {
+		none()
 	}
 	return out, nil
 }

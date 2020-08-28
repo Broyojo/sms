@@ -50,8 +50,10 @@ func Prod(c Config) error {
 	}
 	var all []jin.Decision
 	actions := make(map[string]int)
+	preferred := make(map[string]int)
 	var noDecisions int
 	for _, i := range info {
+		preferred[string(i.Preferred)]++
 		fmt.Println(i)
 		decisions, err := i.Decisions()
 		if err != nil {
@@ -66,7 +68,21 @@ func Prod(c Config) error {
 			actions[d.Type()]++
 		}
 	}
+	pricing := map[string]float64{
+		"email": 0.10 / 1000,
+		"phone": 0.0130, // per minute
+		"sms":   0.0075,
+	}
+	fmt.Printf("preferences: %v\n", preferred)
 	fmt.Printf("%d no-decision contacts, %d total decisions; %v\n", noDecisions, len(all), actions)
+	var total float64
+	for k, v := range pricing {
+		n := actions[k]
+		c := v * float64(n)
+		total += c
+		fmt.Printf("cost for %d %s: $%.2f\n", n, k, c)
+	}
+	fmt.Printf("total cost: $%.2f\n", total)
 	fmt.Println(jin.CleanNumber("(646) 241-7394"))
 	return nil
 }
