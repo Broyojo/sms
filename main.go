@@ -13,17 +13,63 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/kevinburke/twilio-go"
+	"github.com/xoba/sms/a/jin"
+	"github.com/xoba/sms/a/saws"
 	"golang.org/x/time/rate"
 )
 
-// set up ~/.aws dir, with config and credentials files. basic config looks like:
-/*
-[default]
-output = json
-region = us-east-1
-*/
+type Config struct {
+	Profile string
+}
+
+func (c Config) AWSSession() (*session.Session, error) {
+	return saws.NewSessionFromProfile(c.Profile)
+}
+
+func main() {
+	var config Config
+	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
+	flag.Parse()
+
+	if err := Prod(config); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func Prod(c Config) error {
+	svc, err := c.AWSSession()
+	if err != nil {
+		return err
+	}
+	info, err := jin.LoadContacts(s3.New(svc))
+	if err != nil {
+		return err
+	}
+	var all []jin.Decision
+	actions := make(map[string]int)
+	var noDecisions int
+	for _, i := range info {
+		fmt.Println(i)
+		decisions, err := i.Decisions()
+		if err != nil {
+			return err
+		}
+		if len(decisions) == 0 {
+			noDecisions++
+		}
+		all = append(all, decisions...)
+		for _, d := range decisions {
+			fmt.Printf("  %s\n", d)
+			actions[d.Type()]++
+		}
+	}
+	fmt.Printf("%d no-decision contacts, %d total decisions; %v\n", noDecisions, len(all), actions)
+	fmt.Println(jin.CleanNumber("(646) 241-7394"))
+	return nil
+}
 
 func makeCall(to string) error {
 	const (
@@ -51,12 +97,6 @@ func makeCall(to string) error {
 func dump(i interface{}) {
 	buf, _ := json.MarshalIndent(i, "", "  ")
 	fmt.Println(string(buf))
-}
-
-func main() {
-	if err := Run(); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func Run() error {
