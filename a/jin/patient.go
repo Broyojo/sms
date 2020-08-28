@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -88,20 +89,27 @@ func (d Decision) Key() string {
 }
 
 type Receipt struct {
+	Time       time.Time
 	Successful bool
 	Content    string
 	Decision   Decision
 }
 
 func (c Decision) Contact() (*Receipt, error) {
+	r := Receipt{
+		Time: time.Now(),
+	}
 	switch {
 	case c.Phone != nil:
+
 	case c.SMS != nil:
+
 	case c.Email != nil:
+
 	default:
 		return nil, fmt.Errorf("no decision")
 	}
-	return nil, fmt.Errorf("unimplemented")
+	return &r, fmt.Errorf("unimplemented")
 }
 
 func (c Decision) Type() string {
