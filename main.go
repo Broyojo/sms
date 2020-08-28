@@ -1,17 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
@@ -22,7 +26,9 @@ import (
 )
 
 type Config struct {
-	Profile string
+	Profile  string
+	Quantity int
+	Hertz    float64
 }
 
 func (c Config) AWSSession() (*session.Session, error) {
@@ -32,6 +38,8 @@ func (c Config) AWSSession() (*session.Session, error) {
 func main() {
 	var config Config
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
+	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
+	flag.Float64Var(&config.Hertz, "f", 2, "max frequency of contact, hertz")
 	flag.Parse()
 
 	if err := Prod(config); err != nil {
@@ -40,6 +48,10 @@ func main() {
 }
 
 func Prod(c Config) error {
+	if c.Hertz > 2 {
+		return fmt.Errorf("too fast!")
+	}
+
 	svc, err := c.AWSSession()
 	if err != nil {
 		return err
@@ -82,9 +94,82 @@ func Prod(c Config) error {
 		total += c
 		fmt.Printf("cost for %d %s: $%.2f\n", n, k, c)
 	}
-	fmt.Printf("total cost: $%.2f\n", total)
-	fmt.Println(jin.CleanNumber("(646) 241-7394"))
+	fmt.Printf("total estimated cost: $%.2f\n", total)
+
+	rand.Shuffle(len(all), func(i, j int) {
+		all[i], all[j] = all[j], all[i]
+	})
+
+	if len(all) > c.Quantity {
+		all = all[:c.Quantity]
+	}
+
+	dt := time.Duration(1 / c.Hertz * float64(time.Second))
+	limiter := rate.NewLimiter(rate.Every(dt), 1)
+
+	alreadyDone := func(d jin.Decision) (bool, error) {
+		resp, err := s3.New(svc).GetObject(&s3.GetObjectInput{
+			Bucket: aws.String("drjin"),
+			Key:    aws.String(path.Join("receipts", d.Key())),
+		})
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchKey:
+				return false, nil
+			default:
+				return false, err
+			}
+		}
+
+		defer resp.Body.Close()
+		dec := json.NewDecoder(resp.Body)
+		var r jin.Receipt
+		if err := dec.Decode(r); err != nil {
+			return false, err
+		}
+		return r.Successful, nil
+	}
+
+	markDone := func(r *jin.Receipt) error {
+		buf, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+		if _, err := s3.New(svc).PutObject(&s3.PutObjectInput{
+			Bucket: aws.String("drjin"),
+			Key:    aws.String(path.Join("receipts", r.Decision.Key())),
+			Body:   bytes.NewReader(buf),
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	for _, d := range all {
+		done, err := alreadyDone(d)
+		if err != nil {
+			return err
+		}
+		if done {
+			continue
+		}
+		r, err := d.Contact()
+		if err != nil {
+			return err
+		}
+		if err := markDone(r); err != nil {
+			return err
+		}
+		if err := limiter.Wait(context.Background()); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
 }
 
 func makeCall(to string) error {

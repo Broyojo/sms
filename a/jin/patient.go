@@ -1,6 +1,7 @@
 package jin
 
 import (
+	"crypto/md5"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -77,6 +78,30 @@ func (c ContactInfo) String() string {
 
 type Decision struct {
 	Phone, Email, SMS *string `json:",omitempty"`
+}
+
+func (d Decision) Key() string {
+	h := md5.New()
+	e := json.NewEncoder(h)
+	e.Encode(d)
+	return fmt.Sprintf("%x.json", h.Sum(nil))
+}
+
+type Receipt struct {
+	Successful bool
+	Content    string
+	Decision   Decision
+}
+
+func (c Decision) Contact() (*Receipt, error) {
+	switch {
+	case c.Phone != nil:
+	case c.SMS != nil:
+	case c.Email != nil:
+	default:
+		return nil, fmt.Errorf("no decision")
+	}
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func (c Decision) Type() string {
