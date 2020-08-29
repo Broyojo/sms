@@ -2,9 +2,12 @@ package stw
 
 import (
 	"encoding/json"
+	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/kevinburke/twilio-go"
 )
 
 type Credentials struct {
@@ -32,4 +35,20 @@ func LoadCredentials(svc *s3.S3) (*Credentials, error) {
 		return nil, err
 	}
 	return &c, nil
+}
+
+func (c Credentials) NewClient() *twilio.Client {
+	return twilio.NewClient(c.SID, strings.TrimSpace(string(c.Token)), nil)
+}
+
+func MakeCall(client *twilio.Client, from, to, twimlURL string) (*twilio.Call, error) {
+	u, err := url.Parse(twimlURL)
+	if err != nil {
+		return nil, err
+	}
+	return client.Calls.MakeCall(from, to, u)
+}
+
+func SendSMS(client *twilio.Client, from, to, message string) (*twilio.Message, error) {
+	return client.Messages.SendMessage(from, to, message, nil)
 }

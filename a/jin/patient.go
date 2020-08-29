@@ -1,18 +1,14 @@
 package jin
 
 import (
-	"crypto/md5"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/kevinburke/twilio-go"
 )
 
 type ContactInfo struct {
@@ -107,98 +103,6 @@ func (c ContactInfo) String() string {
 	return string(buf)
 }
 
-type Decision struct {
-	Phone, Email, SMS *string `json:",omitempty"`
-}
-
-func (d Decision) Key() string {
-	h := md5.New()
-	e := json.NewEncoder(h)
-	e.Encode(d)
-	return fmt.Sprintf("%x.json", h.Sum(nil))
-}
-
-type Receipt struct {
-	Time       time.Time
-	Successful bool
-	Content    string
-	Decision   Decision
-}
-
-func (c Decision) Contact() (*Receipt, error) {
-	r := Receipt{
-		Time: time.Now(),
-	}
-	switch {
-	case c.Phone != nil:
-
-	case c.SMS != nil:
-
-	case c.Email != nil:
-
-	default:
-		return nil, fmt.Errorf("no decision")
-	}
-	return &r, fmt.Errorf("unimplemented")
-}
-
-func (c Decision) Type() string {
-	if c.Phone != nil {
-		return "phone"
-	}
-	if c.Email != nil {
-		return "email"
-	}
-	if c.SMS != nil {
-		return "sms"
-	}
-	panic("illegal")
-}
-
-func (c Decision) String() string {
-	buf, _ := json.Marshal(c)
-	return string(buf)
-}
-
-func (d Decision) Validate() error {
-	var nonNil int
-	if d.Phone != nil {
-		nonNil++
-		if len(*d.Phone) == 0 {
-			return fmt.Errorf("empty phone")
-		}
-	}
-	if d.Email != nil {
-		nonNil++
-		if len(*d.Email) == 0 {
-			return fmt.Errorf("empty email")
-		}
-	}
-	if d.SMS != nil {
-		nonNil++
-		if len(*d.SMS) == 0 {
-			return fmt.Errorf("empty sms")
-		}
-	}
-	if nonNil == 1 {
-		return nil
-	}
-	return fmt.Errorf("bad decision: " + d.String())
-}
-
-func NewEmail(e Addr) Decision {
-	s := string(e)
-	return Decision{Email: &s}
-}
-func NewPhone(e Phone) Decision {
-	s := string(e)
-	return Decision{Phone: &s}
-}
-func NewSMS(e Phone) Decision {
-	s := string(e)
-	return Decision{SMS: &s}
-}
-
 type Addr string
 type Phone string
 
@@ -212,46 +116,6 @@ const (
 	NoneSpecified Preferred = "None"
 )
 
-// Notify Clients Function
-func Notify(numbers, emails []string) error {
-	twilioNumber := "+19083889127"
-	sid := "ACad3070cb17d26d01a8fbdadb9cd7a37f"
-	message := `Please note Dr.Qiu is leaving office and relocating in a few weeks. She will like you to find a new PCP in the next 30 days. Meantime if you want to make an appointment for urging matters and refills please do so ASAP. Also she has very limited hours 1 to 3 days a week. Please txt back or email or call if you desire to do so ASAP.
-	Please let us know the new PCP Name, Phone #, Fax # that we will direct to Electronic Medical Records system to do so in the earliest possible time. You can find PCP info from your insurance company and Dr Qiu has a recommendation for Dr. Michelle Li (212)-688-8887 Please Contact her to see if she takes your insurance if not contact your insurance for a PCP who takes your insurance. We are only taking patients in July and August who need RX refills, Sick Visits, and Follow ups before Dr Qiu retirement. No GYN/Annual physicals.`
-	twilioClient := twilio.NewClient(sid, "dc5ada9966d0b0d40ba1decc55da5bb7", nil)
-	callURL, err := url.Parse("https://broyojo.com/message.mp3")
-	if err != nil {
-		return err
-	}
-
-	// loop through phone numbers, sending text messages and phone numbers
-	for _, n := range numbers {
-		if err := SendMessage(twilioClient, twilioNumber, n, message); err != nil {
-			return err
-		}
-		MakeCall(twilioClient, twilioNumber, n, callURL)
-	}
-	return nil
-}
-
-// SendMessage Function
-func SendMessage(client *twilio.Client, from, to, message string) error {
-	_, err := client.Messages.SendMessage(from, to, message, nil)
-	return err
-}
-
-// MakeCall Function
-func MakeCall(client *twilio.Client, from, to string, callURL *url.URL) error {
-	_, err := client.Calls.MakeCall(from, to, callURL)
-	return err
-}
-
-// SendEmail Function
-func SendEmail(from, to string, message string) error {
-	return fmt.Errorf("SendEmail unimplemented")
-}
-
-// GetInfo of clients function
 func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 	var contacts []ContactInfo
 

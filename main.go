@@ -6,24 +6,20 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
-	"net/url"
 	"path"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/sns"
-	"github.com/kevinburke/twilio-go"
 	"github.com/xoba/sms/a/jin"
 	"github.com/xoba/sms/a/saws"
+	"github.com/xoba/sms/a/stw"
 	"golang.org/x/time/rate"
 )
 
@@ -31,6 +27,7 @@ type Config struct {
 	Profile  string
 	Quantity int
 	Hertz    float64
+	Prod     bool
 }
 
 func (c Config) AWSSession() (*session.Session, error) {
@@ -39,17 +36,24 @@ func (c Config) AWSSession() (*session.Session, error) {
 
 func main() {
 	var config Config
+	flag.BoolVar(&config.Prod, "prod", false, "production mode or not")
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
 	flag.Float64Var(&config.Hertz, "f", 2, "max frequency of contact, hertz")
 	flag.Parse()
 
-	if err := Prod(config); err != nil {
+	var f func(Config) error
+	if config.Prod {
+		f = ProdMode
+	} else {
+		f = DevMode
+	}
+	if err := f(config); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func Prod(c Config) error {
+func ProdMode(c Config) error {
 	if c.Hertz > 2 {
 		return fmt.Errorf("too fast!")
 	}
@@ -149,7 +153,7 @@ func Prod(c Config) error {
 	fmt.Printf("has email: %v\n", hasEmail)
 	fmt.Printf("has address: %v\n", hasAddress)
 	dumpSortedMap("states", states)
-	fmt.Printf("preferences: %v\n", preferred)
+	dumpSortedMap("preferred", preferred)
 	fmt.Printf("%d no-decision contacts, %d total decisions; %v\n", noDecisions, len(all), actions)
 	var total float64
 	for k, v := range pricing {
@@ -236,72 +240,48 @@ func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
-func makeCall(to string) error {
-	const (
-		sid  = "ACad3070cb17d26d01a8fbdadb9cd7a37f"
-		from = "+19083889127"
-	)
-	const tokenfile = "twilio.txt"
-	token, err := ioutil.ReadFile(tokenfile)
-	if err != nil {
-		return fmt.Errorf("needs token file %q: %w", tokenfile, err)
-	}
-	client := twilio.NewClient(sid, strings.TrimSpace(string(token)), nil)
-	callURL, err := url.Parse("https://broyojo.com/twilio")
-	if err != nil {
-		return err
-	}
-	call, err := client.Calls.MakeCall(from, to, callURL)
-	if err != nil {
-		return fmt.Errorf("can't make call: %w", err)
-	}
-	dump(call)
-	return nil
-}
-
 func dump(i interface{}) {
 	buf, _ := json.MarshalIndent(i, "", "  ")
 	fmt.Println(string(buf))
 }
 
-func Run() error {
-	var to string
-	flag.StringVar(&to, "to", "+19176086254", "phone number to call")
-	flag.Parse()
-
-	return makeCall(to)
-
-	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
-	sess, err := session.NewSession()
+func DevMode(c Config) error {
+	sess, err := c.AWSSession()
 	if err != nil {
 		return fmt.Errorf("can't create session: %w", err)
 	}
-	svc := sns.New(sess)
-	const message = "this is a test of david's project"
-	numbers := strings.Split("+19176086254,+19175139575,+19087235723", ",")
-	for _, n := range numbers {
-		log.Printf("sending to %q:\n", n)
-		o, err := svc.Publish(&sns.PublishInput{
-			PhoneNumber: aws.String(n),
-			Message:     aws.String(message),
-			MessageAttributes: map[string]*sns.MessageAttributeValue{
-				"AWS.SNS.SMS.SMSType": &sns.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String("Transactional"),
-				},
-			},
-		})
+	creds, err := stw.LoadCredentials(s3.New(sess))
+	if err != nil {
+		return err
+	}
+	if false {
+		call, err := stw.MakeCall(
+			creds.NewClient(),
+			jin.TwilioNumber,
+			"+19176086254",
+			jin.TwimlURL,
+		)
 		if err != nil {
-			return fmt.Errorf("can't publish: %w", err)
-		}
-		log.Printf("response: %v\n", o)
-		if err := limiter.Wait(context.Background()); err != nil {
 			return err
 		}
+		fmt.Println(call)
 	}
+	if true {
+		msg, err := jin.LoadMessage()
+		if err != nil {
+			return err
+		}
+		resp, err := stw.SendSMS(
+			creds.NewClient(),
+			jin.TwilioNumber,
+			"+19176086254",
+			msg,
+		)
+		if err != nil {
+			return err
+		}
+		fmt.Println(resp)
+	}
+
 	return nil
 }
-
-// need to request limit increase above $1/month:
-// https://aws.amazon.com/premiumsupport/knowledge-center/sns-sms-spending-limit-increase/#:~:text=Amazon%20SNS%20limits%20the%20amount,through%20the%20AWS%20Support%20Center.
-// https://console.aws.amazon.com/support/home#/case/create?issueType=service-limit-increase&limitType=service-code-sns-text-messaging
