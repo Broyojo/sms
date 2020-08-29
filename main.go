@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"path"
@@ -253,10 +254,15 @@ func ContactPatients(c Config) error {
 	}
 
 	if c.Verbose {
+		const minutes = 3
+		msg, err := jin.LoadMessage()
+		if err != nil {
+			return err
+		}
 		pricing := map[string]float64{
 			"email": 0.10 / 1000,
-			"phone": 0.0130, // per minute
-			"sms":   0.0075,
+			"phone": 0.0130 * minutes,                          // per minute
+			"sms":   0.0075 * math.Ceil(float64(len(msg))/140), // sms segments
 		}
 		dumpSortedMap("hosts", hosts)
 		fmt.Printf("has email: %v\n", hasEmail)
@@ -272,6 +278,7 @@ func ContactPatients(c Config) error {
 			fmt.Printf("cost for %d %s: $%.2f\n", n, k, c)
 		}
 		fmt.Printf("total estimated cost: $%.2f\n", total)
+		return nil
 	}
 
 	rand.Shuffle(len(allDecisions), func(i, j int) {
