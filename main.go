@@ -34,7 +34,7 @@ type Config struct {
 	Profile  string
 	Quantity int
 	Hertz    float64
-	Mode     string // test, dev, or prod
+	Mode     string // test, dev, prod, or logs
 	Prod     bool
 	Verbose  bool
 }
@@ -54,7 +54,7 @@ func Run() error {
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
 	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
-	flag.Float64Var(&config.Hertz, "f", 0.5, "max frequency of contact, hertz")
+	flag.Float64Var(&config.Hertz, "f", 1, "max frequency of contact, hertz")
 	flag.Parse()
 
 	var f func(Config) error
@@ -68,11 +68,67 @@ func Run() error {
 	case "prod":
 		config.Prod = true
 		f = ContactPatients
+	case "logs":
+		config.Prod = false
+		f = FindLogs
 	default:
 		return fmt.Errorf("illegal mode: %q", config.Mode)
 	}
 	log.Printf("running with config %s\n", config)
 	return f(config)
+}
+
+func FindLogs(c Config) error {
+	const errorSid = "SM8f7fbe3e0351431c8e6013164060d9db"
+	session, err := c.AWSSession()
+	if err != nil {
+		return err
+	}
+	svc := s3.New(session)
+
+	fetch := func(key string) (*jin.Receipt, error) {
+		resp, err := svc.GetObject(&s3.GetObjectInput{
+			Bucket: aws.String("drjin"),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		dec := json.NewDecoder(resp.Body)
+		var r jin.Receipt
+		if err := dec.Decode(&r); err != nil {
+			return nil, fmt.Errorf("can't unmarshal %s: %w", key, err)
+		}
+		return &r, nil
+	}
+
+	f := func(x *s3.ListObjectsV2Output, b bool) bool {
+		for _, o := range x.Contents {
+			fmt.Printf("got key %q\n", *o.Key)
+			r, err := fetch(*o.Key)
+			if err != nil {
+				log.Fatalf("can't get %q: %v", *o.Key, err)
+			}
+			m, ok := r.Content.(map[string]interface{})
+			if ok {
+				sid := m["sid"].(string)
+				if sid == errorSid {
+					fmt.Println(r)
+				}
+			}
+		}
+		return true
+	}
+	i := &s3.ListObjectsV2Input{
+		Bucket: aws.String("drjin"),
+		Prefix: aws.String("receipts/"),
+	}
+	if err := s3.New(session).ListObjectsV2Pages(i, f); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ContactPatients(c Config) error {

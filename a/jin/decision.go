@@ -95,6 +95,11 @@ type Receipt struct {
 	Content    interface{}
 }
 
+func (r Receipt) String() string {
+	buf, _ := json.MarshalIndent(r, "", "  ")
+	return string(buf)
+}
+
 func (c Decision) Host() string {
 	var host string
 	if c.Email != nil {
