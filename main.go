@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/xoba/sms/a/jin"
 	"github.com/xoba/sms/a/saws"
 	"github.com/xoba/sms/a/stw"
@@ -57,12 +58,15 @@ func ProdMode(c Config) error {
 	if c.Hertz > 2 {
 		return fmt.Errorf("too fast!")
 	}
-
-	svc, err := c.AWSSession()
+	session, err := c.AWSSession()
 	if err != nil {
 		return err
 	}
-	info, err := jin.LoadContacts(s3.New(svc))
+	creds, err := stw.LoadCredentials(s3.New(session))
+	if err != nil {
+		return err
+	}
+	info, err := jin.LoadContacts(s3.New(session))
 	if err != nil {
 		return err
 	}
@@ -176,7 +180,7 @@ func ProdMode(c Config) error {
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	alreadyDone := func(d jin.Decision) (bool, error) {
-		resp, err := s3.New(svc).GetObject(&s3.GetObjectInput{
+		resp, err := s3.New(session).GetObject(&s3.GetObjectInput{
 			Bucket: aws.String("drjin"),
 			Key:    aws.String(path.Join("receipts", d.Key())),
 		})
@@ -203,7 +207,7 @@ func ProdMode(c Config) error {
 		if err != nil {
 			return err
 		}
-		if _, err := s3.New(svc).PutObject(&s3.PutObjectInput{
+		if _, err := s3.New(session).PutObject(&s3.PutObjectInput{
 			Bucket: aws.String("drjin"),
 			Key:    aws.String(path.Join("receipts", r.Decision.Key())),
 			Body:   bytes.NewReader(buf),
@@ -221,7 +225,7 @@ func ProdMode(c Config) error {
 		if done {
 			continue
 		}
-		r, err := d.Contact()
+		r, err := d.Contact(ses.New(session), creds.NewClient())
 		if err != nil {
 			return err
 		}
@@ -254,6 +258,26 @@ func DevMode(c Config) error {
 	if err != nil {
 		return err
 	}
+
+	msg, err := jin.LoadMessage()
+	if err != nil {
+		return err
+	}
+
+	if true {
+		resp, err := saws.SendEmail(
+			ses.New(sess),
+			"mra@xoba.com",
+			"mra@xoba.com",
+			jin.EmailSubject,
+			msg,
+		)
+		if err != nil {
+			return err
+		}
+		buf, _ := json.MarshalIndent(resp, "", "  ")
+		fmt.Println(string(buf))
+	}
 	if false {
 		call, err := stw.MakeCall(
 			creds.NewClient(),
@@ -266,11 +290,8 @@ func DevMode(c Config) error {
 		}
 		fmt.Println(call)
 	}
-	if true {
-		msg, err := jin.LoadMessage()
-		if err != nil {
-			return err
-		}
+	if false {
+
 		resp, err := stw.SendSMS(
 			creds.NewClient(),
 			jin.TwilioNumber,
@@ -280,7 +301,8 @@ func DevMode(c Config) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp)
+		buf, _ := json.MarshalIndent(resp, "", "  ")
+		fmt.Println(string(buf))
 	}
 
 	return nil

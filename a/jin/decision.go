@@ -7,9 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ses"
+	"github.com/kevinburke/twilio-go"
+	"github.com/xoba/sms/a/saws"
+	"github.com/xoba/sms/a/stw"
 )
 
 func NewEmail(e Addr) Decision {
@@ -47,14 +53,9 @@ func (d Decision) Key() string {
 	return fmt.Sprintf("%x.json", h.Sum(nil))
 }
 
-type Receipt struct {
-	Time       time.Time
-	Successful bool
-	Decision   Decision
-	Content    interface{}
-}
-
 const (
+	EmailSender  = "mra@xoba.com"
+	EmailSubject = "Important message from Dr. Ann Jin Qiu"
 	TwilioNumber = "+19083889127"
 	TwimlURL     = "https://broyojo.com/twilio"
 )
@@ -67,30 +68,79 @@ func LoadMessage() (string, error) {
 	}
 	s := bufio.NewScanner(f)
 	for s.Scan() {
-		line := s.Text()
-		fmt.Fprintln(w, line)
+		line := strings.TrimSpace(s.Text())
+		if line == "" {
+			fmt.Fprintln(w)
+			fmt.Fprintln(w)
+		} else {
+			fmt.Fprintf(w, "%s ", line)
+		}
 	}
 	if err := s.Err(); err != nil {
 		return "", err
 	}
-	return w.String(), nil
+	msg := w.String()
+	r := regexp.MustCompile("[ ]+")
+	msg = r.ReplaceAllString(msg, " ")
+	return msg, nil
 }
 
-func (c Decision) Contact() (*Receipt, error) {
+type Receipt struct {
+	Time       time.Time
+	Successful bool
+	Decision   Decision
+	Content    interface{}
+}
+
+func (c Decision) Contact(emailSvc *ses.SES, twilioSvc *twilio.Client) (*Receipt, error) {
 	r := Receipt{
-		Time: time.Now(),
+		Time:     time.Now(),
+		Decision: c,
+	}
+	msg, err := LoadMessage()
+	if err != nil {
+		return nil, err
 	}
 	switch {
 	case c.Phone != nil:
-
+		call, err := stw.MakeCall(
+			twilioSvc,
+			TwilioNumber,
+			*c.Phone,
+			TwimlURL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		r.Content = call
 	case c.SMS != nil:
-
+		message, err := stw.SendSMS(
+			twilioSvc,
+			TwilioNumber,
+			*c.SMS,
+			msg,
+		)
+		if err != nil {
+			return nil, err
+		}
+		r.Content = message
 	case c.Email != nil:
-
+		resp, err := saws.SendEmail(
+			emailSvc,
+			EmailSender,
+			*c.Email,
+			EmailSubject,
+			msg,
+		)
+		if err != nil {
+			return nil, err
+		}
+		r.Content = resp
 	default:
 		return nil, fmt.Errorf("no decision")
 	}
-	return &r, fmt.Errorf("unimplemented")
+	r.Successful = true
+	return &r, nil
 }
 
 func (c Decision) Type() string {
