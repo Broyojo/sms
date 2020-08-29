@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -60,13 +61,39 @@ func Prod(c Config) error {
 	if err != nil {
 		return err
 	}
+	dumpSortedMap := func(name string, m map[string]int) {
+		var list []string
+		for k := range m {
+			list = append(list, k)
+		}
+		sort.Slice(list, func(i, j int) bool {
+			return m[list[i]] > m[list[j]]
+		})
+		fmt.Printf("%s:\n", name)
+		for _, k := range list {
+			fmt.Printf("  %d %q\n", m[k], k)
+		}
+	}
 	var all []jin.Decision
+	hosts := make(map[string]int)
 	actions := make(map[string]int)
 	preferred := make(map[string]int)
+	states := make(map[string]int)
+	hasAddress := make(map[bool]int)
+	hasEmail := make(map[bool]int)
 	var noDecisions int
 	for _, i := range info {
+		hasAddress[i.HasAddress()]++
+		hasEmail[i.Email != ""]++
+		states[i.State]++
 		preferred[string(i.Preferred)]++
+		hosts[i.Host()]++
 		fmt.Println(i)
+		if i.Email != "" {
+			if err := i.ValidateEmail(); err != nil {
+				return err
+			}
+		}
 		decisions, err := i.Decisions()
 		if err != nil {
 			return err
@@ -85,6 +112,12 @@ func Prod(c Config) error {
 		"phone": 0.0130, // per minute
 		"sms":   0.0075,
 	}
+	if false {
+		dumpSortedMap("hosts", hosts)
+	}
+	fmt.Printf("has email: %v\n", hasEmail)
+	fmt.Printf("has address: %v\n", hasAddress)
+	dumpSortedMap("states", states)
 	fmt.Printf("preferences: %v\n", preferred)
 	fmt.Printf("%d no-decision contacts, %d total decisions; %v\n", noDecisions, len(all), actions)
 	var total float64

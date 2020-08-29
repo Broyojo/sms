@@ -23,6 +23,36 @@ type ContactInfo struct {
 	Mobile              Phone     `json:",omitempty"`
 	Office              Phone     `json:",omitempty"`
 	Home                Phone     `json:",omitempty"`
+	Address1, Address2  string    `json:",omitempty"`
+	City, State, Zip    string    `json:",omitempty"`
+}
+
+func (c ContactInfo) Host() string {
+	email := strings.TrimSpace(strings.ToLower(string(c.Email)))
+	i := strings.LastIndexByte(email, '@')
+	return email[i+1:]
+}
+
+var emailRegexp = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+func (c ContactInfo) ValidateEmail() error {
+	if !emailRegexp.MatchString(string(c.Email)) {
+		return fmt.Errorf("bad email: %q", c.Email)
+	}
+	return nil
+}
+
+func (c ContactInfo) HasAddress() bool {
+	if c.Address1 == "" {
+		return false
+	}
+	if c.City == "" {
+		return false
+	}
+	if c.State == "" {
+		return false
+	}
+	return true
 }
 
 func (c ContactInfo) Decisions() ([]Decision, error) {
@@ -237,6 +267,7 @@ func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 		if i == 0 {
 			for j, f := range linex {
 				headerIndex[f] = j
+				//fmt.Printf("%2d: %q\n", j, f)
 			}
 			continue
 		}
@@ -249,11 +280,16 @@ func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 		}
 		if field("Fake") == "No" { // filter out fake clients (why does this exist?)
 			contact := ContactInfo{
-				ID:     field("Patient Identifier"),
-				First:  field("Patient First Name"),
-				Middle: field("Patient Middle Name"),
-				Last:   field("Patient Last Name"),
-				Email:  Addr(field("Email Address")),
+				ID:       field("Patient Identifier"),
+				First:    field("Patient First Name"),
+				Middle:   field("Patient Middle Name"),
+				Last:     field("Patient Last Name"),
+				Email:    Addr(field("Email Address")),
+				Address1: field("Address Line 1"),
+				Address2: field("Address Line 2"),
+				City:     field("City"),
+				State:    field("State"),
+				Zip:      field("Postal Code"),
 			}
 			set := func(value *Phone, name string) error {
 				n, err := CleanNumber(field(name))
