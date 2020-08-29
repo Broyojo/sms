@@ -39,6 +39,11 @@ type Config struct {
 	Verbose  bool
 }
 
+func (c Config) String() string {
+	buf, _ := json.Marshal(c)
+	return string(buf)
+}
+
 func (c Config) AWSSession() (*session.Session, error) {
 	return saws.NewSessionFromProfile(c.Profile)
 }
@@ -66,6 +71,7 @@ func Run() error {
 	default:
 		return fmt.Errorf("illegal mode: %q", config.Mode)
 	}
+	log.Printf("running with config %s\n", config)
 	return f(config)
 }
 
@@ -139,42 +145,43 @@ func ContactPatients(c Config) error {
 		}
 	}
 
-	badHosts := make(map[string]bool)
-	/*
-		"debvoise.com" not found
-		"solusp.com" not found
-		"" not found
-		"iclowd.com" not found --- icloud.com?
-		"neus.sr" not found
-		"maine.eudu" not found --- maine.edu?
-		"no.com" not found
-		"ail.com" not found --- mail.com?
-		"dfkdf.com" not found
-		"dreierllp.com" not found
-		"nyc.rrcom" not found --- nyc.rr.com?
-	*/
+	{
+		badHosts := make(map[string]bool)
 
-	for h := range hosts {
-		if h == "" {
-			continue
-		}
-		if c.Verbose {
-			fmt.Printf("host %q\n", h)
-		}
-		_, err := net.LookupMX(h)
-		if err != nil {
-			if nerr, ok := err.(*net.DNSError); ok && nerr.IsNotFound {
-				badHosts[h] = true
-				if c.Verbose {
-					fmt.Printf("%q not found\n", h)
+		/*
+			"debvoise.com" not found
+			"solusp.com" not found
+			"" not found
+			"iclowd.com" not found --- icloud.com?
+			"neus.sr" not found
+			"maine.eudu" not found --- maine.edu?
+			"no.com" not found
+			"ail.com" not found --- mail.com?
+			"dfkdf.com" not found
+			"dreierllp.com" not found
+			"nyc.rrcom" not found --- nyc.rr.com?
+		*/
+
+		for h := range hosts {
+			if h == "" {
+				continue
+			}
+			if c.Verbose {
+				fmt.Printf("host %q\n", h)
+			}
+			_, err := net.LookupMX(h)
+			if err != nil {
+				if nerr, ok := err.(*net.DNSError); ok && nerr.IsNotFound {
+					badHosts[h] = true
+					if c.Verbose {
+						fmt.Printf("%q not found\n", h)
+					}
+				} else {
+					return err
 				}
-			} else {
-				return err
 			}
 		}
-	}
 
-	{
 		var filtered []jin.Decision
 		for _, d := range allDecisions {
 			if badHosts[d.Host()] {
@@ -186,12 +193,12 @@ func ContactPatients(c Config) error {
 		allDecisions = filtered
 	}
 
-	pricing := map[string]float64{
-		"email": 0.10 / 1000,
-		"phone": 0.0130, // per minute
-		"sms":   0.0075,
-	}
 	if c.Verbose {
+		pricing := map[string]float64{
+			"email": 0.10 / 1000,
+			"phone": 0.0130, // per minute
+			"sms":   0.0075,
+		}
 		dumpSortedMap("hosts", hosts)
 		fmt.Printf("has email: %v\n", hasEmail)
 		fmt.Printf("has address: %v\n", hasAddress)
@@ -220,6 +227,7 @@ func ContactPatients(c Config) error {
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	for _, d := range allDecisions {
+		fmt.Println()
 		log.Printf("decision: %s", d)
 		if !c.Prod {
 			d.SetDebugging("+19176086254", "mra@xoba.com")
@@ -244,7 +252,6 @@ func ContactPatients(c Config) error {
 			return err
 		}
 		log.Printf("finished and marked %s\n", d)
-		fmt.Println()
 		if err := limiter.Wait(context.Background()); err != nil {
 			return err
 		}
