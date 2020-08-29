@@ -254,7 +254,7 @@ func ContactPatients(c Config) error {
 	}
 
 	if c.Verbose {
-		const minutes = 3
+		const minutes = 2
 		msg, err := jin.LoadMessage()
 		if err != nil {
 			return err
