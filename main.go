@@ -278,7 +278,6 @@ func ContactPatients(c Config) error {
 			fmt.Printf("cost for %d %s: $%.2f\n", n, k, c)
 		}
 		fmt.Printf("total estimated cost: $%.2f\n", total)
-		return nil
 	}
 
 	rand.Shuffle(len(allDecisions), func(i, j int) {
