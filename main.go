@@ -28,7 +28,7 @@ type Config struct {
 	Profile  string
 	Quantity int
 	Hertz    float64
-	Prod     bool
+	Mode     string // test, dev, or prod
 }
 
 func (c Config) AWSSession() (*session.Session, error) {
@@ -37,17 +37,22 @@ func (c Config) AWSSession() (*session.Session, error) {
 
 func main() {
 	var config Config
-	flag.BoolVar(&config.Prod, "prod", false, "production mode or not")
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
+	flag.StringVar(&config.Mode, "m", "test", "mode: test, dev, or prod")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
 	flag.Float64Var(&config.Hertz, "f", 2, "max frequency of contact, hertz")
 	flag.Parse()
 
 	var f func(Config) error
-	if config.Prod {
+	switch config.Mode {
+	case "test":
+		f = TestMode
+	case "dev", "prod":
+		// running the message sender, either for real ("prod"),
+		// or for development or testing purposes ("dev")
 		f = ProdMode
-	} else {
-		f = DevMode
+	default:
+
 	}
 	if err := f(config); err != nil {
 		log.Fatal(err)
@@ -249,7 +254,7 @@ func dump(i interface{}) {
 	fmt.Println(string(buf))
 }
 
-func DevMode(c Config) error {
+func TestMode(c Config) error {
 	sess, err := c.AWSSession()
 	if err != nil {
 		return fmt.Errorf("can't create session: %w", err)
