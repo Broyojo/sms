@@ -103,6 +103,8 @@ func FindLogs(c Config) error {
 		return &r, nil
 	}
 
+	types := make(map[string]int)
+
 	f := func(x *s3.ListObjectsV2Output, b bool) bool {
 		for _, o := range x.Contents {
 			fmt.Printf("got key %q\n", *o.Key)
@@ -110,10 +112,11 @@ func FindLogs(c Config) error {
 			if err != nil {
 				log.Fatalf("can't get %q: %v", *o.Key, err)
 			}
+			types[r.Decision.Type()]++
 			m, ok := r.Content.(map[string]interface{})
 			if ok {
-				sid := m["sid"].(string)
-				if sid == errorSid {
+				sid, ok := m["sid"].(string)
+				if ok && sid == errorSid {
 					fmt.Println(r)
 				}
 			}
@@ -127,7 +130,7 @@ func FindLogs(c Config) error {
 	if err := s3.New(session).ListObjectsV2Pages(i, f); err != nil {
 		return err
 	}
-
+	fmt.Printf("types = %v\n", types)
 	return nil
 }
 
