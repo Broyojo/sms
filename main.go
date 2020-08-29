@@ -54,7 +54,7 @@ func Run() error {
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
 	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
-	flag.Float64Var(&config.Hertz, "f", 2, "max frequency of contact, hertz")
+	flag.Float64Var(&config.Hertz, "f", 0.5, "max frequency of contact, hertz")
 	flag.Parse()
 
 	var f func(Config) error
@@ -224,6 +224,7 @@ func ContactPatients(c Config) error {
 	}
 
 	dt := time.Duration(1 / c.Hertz * float64(time.Second))
+	log.Printf("running with limit dt = %v", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	for _, d := range allDecisions {
