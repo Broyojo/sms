@@ -35,14 +35,17 @@ type Decision struct {
 	Phone, Email, SMS *string `json:",omitempty"`
 }
 
-func (d *Decision) SetDebugging() {
+// makes sure to not send for real
+func (d *Decision) SetDebugging(phone, email string) {
 	switch {
 	case d.Phone != nil:
-		d.Phone = aws.String("+19176086254")
+		d.Phone = aws.String(phone)
 	case d.SMS != nil:
-		d.SMS = aws.String("+19176086254")
+		d.SMS = aws.String(phone)
 	case d.Email != nil:
-		d.Email = aws.String("mra@xoba.com")
+		d.Email = aws.String(email)
+	default:
+		panic(fmt.Errorf("illegal decision: %v", d))
 	}
 }
 
@@ -54,7 +57,7 @@ func (d Decision) Key() string {
 }
 
 const (
-	EmailSender  = "mra@xoba.com"
+	EmailSender  = "dr2127588851@gmail.com"
 	EmailSubject = "Important message from Dr. Ann Jin Qiu"
 	TwilioNumber = "+19083889127"
 	TwimlURL     = "https://broyojo.com/twilio"
@@ -90,6 +93,16 @@ type Receipt struct {
 	Successful bool
 	Decision   Decision
 	Content    interface{}
+}
+
+func (c Decision) Host() string {
+	var host string
+	if c.Email != nil {
+		email := strings.TrimSpace(strings.ToLower(string(*c.Email)))
+		i := strings.LastIndexByte(email, '@')
+		host = email[i+1:]
+	}
+	return host
 }
 
 func (c Decision) Contact(emailSvc *ses.SES, twilioSvc *twilio.Client) (*Receipt, error) {

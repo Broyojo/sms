@@ -195,7 +195,6 @@ func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 			contacts = append(contacts, contact)
 		}
 	}
-	fmt.Printf("loaded %d dups, %d contacts total\n", dups, len(contacts))
 	return contacts, nil
 }
 
