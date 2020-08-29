@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/url"
 	"path"
 	"sort"
@@ -107,6 +108,36 @@ func Prod(c Config) error {
 			actions[d.Type()]++
 		}
 	}
+	if false {
+		/*
+			"debvoise.com" not found
+			"solusp.com" not found
+			"" not found
+			"iclowd.com" not found --- icloud.com?
+			"neus.sr" not found
+			"maine.eudu" not found --- maine.edu?
+			"no.com" not found
+			"ail.com" not found --- mail.com?
+			"dfkdf.com" not found
+			"dreierllp.com" not found
+			"nyc.rrcom" not found --- nyc.rr.com?
+		*/
+		for h := range hosts {
+			_, err := net.LookupMX(h)
+			if err != nil {
+				if nerr, ok := err.(*net.DNSError); ok {
+					if nerr.IsNotFound {
+						fmt.Printf("%q not found\n", h)
+					} else {
+						return err
+					}
+				} else {
+					fmt.Printf("%s: %v\n", h, err)
+				}
+			}
+		}
+	}
+
 	pricing := map[string]float64{
 		"email": 0.10 / 1000,
 		"phone": 0.0130, // per minute
