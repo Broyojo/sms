@@ -12,6 +12,7 @@ import (
 	"net"
 	"path"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,6 +23,7 @@ import (
 	"github.com/xoba/sms/a/jin"
 	"github.com/xoba/sms/a/saws"
 	"github.com/xoba/sms/a/stw"
+	"github.com/xoba/sms/a/task"
 	"golang.org/x/time/rate"
 )
 
@@ -207,6 +209,12 @@ func ContactPatients(c Config) error {
 
 	{
 		badHosts := make(map[string]bool)
+		lock := new(sync.Mutex)
+		update := func(host string) {
+			lock.Lock()
+			defer lock.Unlock()
+			badHosts[host] = true
+		}
 
 		/*
 			"debvoise.com" not found
@@ -222,24 +230,33 @@ func ContactPatients(c Config) error {
 			"nyc.rrcom" not found --- nyc.rr.com?
 		*/
 
+		var tasks []task.Task
 		for h := range hosts {
 			if h == "" {
 				continue
 			}
-			if c.Verbose {
-				fmt.Printf("host %q\n", h)
-			}
-			_, err := net.LookupMX(h)
-			if err != nil {
-				if nerr, ok := err.(*net.DNSError); ok && nerr.IsNotFound {
-					badHosts[h] = true
-					if c.Verbose {
-						fmt.Printf("%q not found\n", h)
-					}
-				} else {
-					return err
+			h := h
+			tasks = append(tasks, func() error {
+				if c.Verbose {
+					fmt.Printf("host %q\n", h)
 				}
-			}
+				_, err := net.LookupMX(h)
+				if err != nil {
+					if nerr, ok := err.(*net.DNSError); ok && nerr.IsNotFound {
+						update(h)
+						if c.Verbose {
+							fmt.Printf("%q not found\n", h)
+						}
+					} else {
+						return err
+					}
+				}
+				return nil
+			})
+		}
+
+		if errs := task.Run(tasks, 20); len(errs) > 0 {
+			return fmt.Errorf("first error %w; %v", errs[0], errs)
 		}
 
 		var filtered []jin.Decision
