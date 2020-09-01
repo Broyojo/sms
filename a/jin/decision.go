@@ -111,7 +111,11 @@ func (c Decision) Host() string {
 }
 
 func IllegalNumber(n string) bool {
-	if strings.HasPrefix(n, "+8") {
+	switch {
+	case strings.HasPrefix(n, "+8"):
+		return true
+	case strings.HasPrefix(n, "+1787") || strings.HasPrefix(n, "+1939"):
+		// puerto rico
 		return true
 	}
 	return false
