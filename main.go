@@ -294,7 +294,7 @@ func ContactPatients(c Config) error {
 			total += c
 			fmt.Printf("cost for %d %s: $%.2f\n", n, k, c)
 		}
-		fmt.Printf("total estimated cost: $%.2f\n", total)
+		fmt.Printf("total estimated cost for %d decisions: $%.2f\n", len(allDecisions), total)
 	}
 
 	rand.Shuffle(len(allDecisions), func(i, j int) {
