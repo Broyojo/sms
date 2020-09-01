@@ -110,6 +110,13 @@ func (c Decision) Host() string {
 	return host
 }
 
+func IllegalNumber(n string) bool {
+	if strings.HasPrefix(n, "+8") {
+		return true
+	}
+	return false
+}
+
 func (c Decision) Contact(emailSvc *ses.SES, twilioSvc *twilio.Client) (*Receipt, error) {
 	r := Receipt{
 		Time:     time.Now(),
@@ -121,6 +128,11 @@ func (c Decision) Contact(emailSvc *ses.SES, twilioSvc *twilio.Client) (*Receipt
 	}
 	switch {
 	case c.Phone != nil:
+		if IllegalNumber(*c.Phone) {
+			r.Content = "illegal number"
+			// r.Successful == false
+			return &r, nil
+		}
 		call, err := stw.MakeCall(
 			twilioSvc,
 			TwilioNumber,
@@ -132,6 +144,11 @@ func (c Decision) Contact(emailSvc *ses.SES, twilioSvc *twilio.Client) (*Receipt
 		}
 		r.Content = call
 	case c.SMS != nil:
+		if IllegalNumber(*c.SMS) {
+			r.Content = "illegal number"
+			// r.Successful == false
+			return &r, nil
+		}
 		message, err := stw.SendSMS(
 			twilioSvc,
 			TwilioNumber,

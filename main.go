@@ -362,7 +362,7 @@ func alreadyDone(session *session.Session, d jin.Decision) (bool, error) {
 	if err := dec.Decode(&r); err != nil {
 		return false, fmt.Errorf("can't unmarshal %s: %w", d.Key(), err)
 	}
-	return r.Successful, nil
+	return true, nil
 }
 
 func markDone(session *session.Session, r *jin.Receipt) error {
