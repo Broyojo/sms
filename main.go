@@ -164,8 +164,7 @@ func FindLogs(c Config) error {
 }
 
 func WithinWorkingHours() bool {
-	t := time.Now()
-	if h := t.Hour(); h >= 9 && h <= 17 {
+	if h := time.Now().Hour(); h >= 9 && h <= 17 {
 		return true
 	}
 	return false
