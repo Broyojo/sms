@@ -175,7 +175,7 @@ func WaitForWorkingHours() {
 		if WithinWorkingHours() {
 			return
 		}
-		fmt.Println("waiting for working hours")
+		log.Println("waiting for working hours")
 		time.Sleep(time.Minute)
 	}
 }
