@@ -34,12 +34,12 @@ func main() {
 }
 
 type Config struct {
-	Profile  string
-	Quantity int
-	Hertz    float64
-	Mode     string // test, dev, prod, or logs
-	Prod     bool
-	Verbose  bool
+	Profile  string  `json:",omitempty"`
+	Quantity int     `json:",omitempty"`
+	Hertz    float64 `json:",omitempty"`
+	Mode     string  // test, dev, prod, or logs
+	Prod     bool    `json:",omitempty"`
+	Verbose  bool    `json:",omitempty"`
 }
 
 func (c Config) String() string {
@@ -55,7 +55,7 @@ func Run() error {
 	var config Config
 	flag.BoolVar(&config.Verbose, "v", false, "whether to run verbosely or not")
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
-	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod")
+	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod, or count")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
 	flag.Float64Var(&config.Hertz, "f", 1, "max frequency of contact, hertz")
 	flag.Parse()
@@ -74,11 +74,37 @@ func Run() error {
 	case "logs":
 		config.Prod = false
 		f = FindLogs
+	case "count":
+		f = CountReceipts
 	default:
 		return fmt.Errorf("illegal mode: %q", config.Mode)
 	}
 	log.Printf("running with config %s\n", config)
 	return f(config)
+}
+
+func CountReceipts(c Config) error {
+	session, err := c.AWSSession()
+	if err != nil {
+		return err
+	}
+	m := make(map[string]bool)
+	svc := s3.New(session)
+	f := func(x *s3.ListObjectsV2Output, b bool) bool {
+		for _, o := range x.Contents {
+			m[*o.Key] = true
+		}
+		return true
+	}
+	i := &s3.ListObjectsV2Input{
+		Bucket: aws.String("drjin"),
+		Prefix: aws.String("receipts/"),
+	}
+	if err := svc.ListObjectsV2Pages(i, f); err != nil {
+		return err
+	}
+	fmt.Printf("%d receipts\n", len(m))
+	return nil
 }
 
 func FindLogs(c Config) error {
@@ -130,7 +156,7 @@ func FindLogs(c Config) error {
 		Bucket: aws.String("drjin"),
 		Prefix: aws.String("receipts/"),
 	}
-	if err := s3.New(session).ListObjectsV2Pages(i, f); err != nil {
+	if err := svc.ListObjectsV2Pages(i, f); err != nil {
 		return err
 	}
 	fmt.Printf("types = %v\n", types)
