@@ -163,6 +163,24 @@ func FindLogs(c Config) error {
 	return nil
 }
 
+func WithinWorkingHours() bool {
+	t := time.Now()
+	if h := t.Hour(); h >= 9 && h <= 17 {
+		return true
+	}
+	return false
+}
+
+func WaitForWorkingHours() {
+	for {
+		if WithinWorkingHours() {
+			return
+		}
+		fmt.Println("waiting for working hours")
+		time.Sleep(time.Minute)
+	}
+}
+
 func ContactPatients(c Config) error {
 	if c.Hertz > 2 {
 		return fmt.Errorf("too fast!")
@@ -336,6 +354,7 @@ func ContactPatients(c Config) error {
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	for _, d := range allDecisions {
+		WaitForWorkingHours()
 		fmt.Println()
 		log.Printf("decision: %s", d)
 		if !c.Prod {
