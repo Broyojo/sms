@@ -114,6 +114,9 @@ func IllegalNumber(n string) bool {
 	switch {
 	case strings.HasPrefix(n, "+8"):
 		return true
+	case strings.HasPrefix(n, "+11"):
+		// no U.S. area code starts with "1"
+		return true
 	case strings.HasPrefix(n, "+1787") || strings.HasPrefix(n, "+1939"):
 		// puerto rico
 		return true
