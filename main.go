@@ -37,7 +37,7 @@ type Config struct {
 	Profile  string  `json:",omitempty"`
 	Quantity int     `json:",omitempty"`
 	Hertz    float64 `json:",omitempty"`
-	Mode     string  // test, dev, prod, or logs
+	Mode     string  // test, dev, prod, or logs, or count
 	Prod     bool    `json:",omitempty"`
 	Verbose  bool    `json:",omitempty"`
 }
@@ -55,7 +55,7 @@ func Run() error {
 	var config Config
 	flag.BoolVar(&config.Verbose, "v", false, "whether to run verbosely or not")
 	flag.StringVar(&config.Profile, "p", "", "aws iam profile to use, if any")
-	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod, or count")
+	flag.StringVar(&config.Mode, "m", "dev", "mode: test, dev, or prod, logs, or count")
 	flag.IntVar(&config.Quantity, "q", 0, "max quantity of folks to reach out to")
 	flag.Float64Var(&config.Hertz, "f", 1, "max frequency of contact, hertz")
 	flag.Parse()
