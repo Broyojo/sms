@@ -348,7 +348,13 @@ func ContactPatients(c Config) error {
 	log.Printf("running with limit dt = %v", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
-	var contactsMade int
+	var contactsMade, availableContacts int
+
+	if max := len(allDecisions); c.Quantity < max {
+		availableContacts = c.Quantity
+	} else {
+		availableContacts = max
+	}
 
 	for _, d := range allDecisions {
 		if contactsMade >= c.Quantity {
@@ -358,7 +364,7 @@ func ContactPatients(c Config) error {
 			WaitForWorkingHours()
 		}
 		fmt.Println()
-		log.Printf("%d/%d. decision: %s", 1+contactsMade, c.Quantity, d)
+		log.Printf("%d/%d. decision: %s", 1+contactsMade, availableContacts, d)
 		if !c.Prod {
 			d.SetDebugging("+19176086254", "mra@xoba.com")
 			if d.SMS == nil {
