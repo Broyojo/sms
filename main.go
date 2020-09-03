@@ -353,7 +353,9 @@ func ContactPatients(c Config) error {
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	for _, d := range allDecisions {
-		WaitForWorkingHours()
+		if c.Prod {
+			WaitForWorkingHours()
+		}
 		fmt.Println()
 		log.Printf("decision: %s", d)
 		if !c.Prod {
