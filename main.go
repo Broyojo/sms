@@ -83,10 +83,10 @@ func Run() error {
 	return f(config)
 }
 
-func CountReceipts(c Config) error {
+func count(c Config) (int, error) {
 	session, err := c.AWSSession()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	m := make(map[string]bool)
 	svc := s3.New(session)
@@ -101,9 +101,17 @@ func CountReceipts(c Config) error {
 		Prefix: aws.String("receipts/"),
 	}
 	if err := svc.ListObjectsV2Pages(i, f); err != nil {
+		return 0, err
+	}
+	return len(m), nil
+}
+
+func CountReceipts(c Config) error {
+	n, err := count(c)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("%d receipts\n", len(m))
+	fmt.Printf("%d receipts\n", n)
 	return nil
 }
 
@@ -348,14 +356,17 @@ func ContactPatients(c Config) error {
 	log.Printf("running with limit dt = %v", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
-	var contactsMade, availableContacts int
-
-	if max := len(allDecisions); c.Quantity < max {
+	receiptCount, err := count(c)
+	if err != nil {
+		return err
+	}
+	log.Printf("there are %d receipts", receiptCount)
+	availableContacts := len(allDecisions) - receiptCount
+	if availableContacts > c.Quantity {
 		availableContacts = c.Quantity
-	} else {
-		availableContacts = max
 	}
 
+	var contactsMade int
 	for _, d := range allDecisions {
 		if contactsMade >= c.Quantity {
 			break
