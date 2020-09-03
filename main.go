@@ -344,20 +344,21 @@ func ContactPatients(c Config) error {
 		allDecisions[i], allDecisions[j] = allDecisions[j], allDecisions[i]
 	})
 
-	if len(allDecisions) > c.Quantity {
-		allDecisions = allDecisions[:c.Quantity]
-	}
-
 	dt := time.Duration(1 / c.Hertz * float64(time.Second))
 	log.Printf("running with limit dt = %v", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
+	var contactsMade int
+
 	for _, d := range allDecisions {
+		if contactsMade >= c.Quantity {
+			break
+		}
 		if c.Prod {
 			WaitForWorkingHours()
 		}
 		fmt.Println()
-		log.Printf("decision: %s", d)
+		log.Printf("%d/%d. decision: %s", 1+contactsMade, c.Quantity, d)
 		if !c.Prod {
 			d.SetDebugging("+19176086254", "mra@xoba.com")
 			if d.SMS == nil {
@@ -380,6 +381,7 @@ func ContactPatients(c Config) error {
 		if err := markDone(session, r); err != nil {
 			return err
 		}
+		contactsMade++
 		log.Printf("finished and marked %s\n", d)
 		if err := limiter.Wait(context.Background()); err != nil {
 			return err
