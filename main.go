@@ -83,16 +83,16 @@ func Run() error {
 	return f(config)
 }
 
-func count(c Config) (int, error) {
+func loadReceipts(c Config) (map[string]bool, error) {
 	session, err := c.AWSSession()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	m := make(map[string]bool)
 	svc := s3.New(session)
 	f := func(x *s3.ListObjectsV2Output, b bool) bool {
 		for _, o := range x.Contents {
-			m[*o.Key] = true
+			m[path.Base(*o.Key)] = true
 		}
 		return true
 	}
@@ -101,17 +101,17 @@ func count(c Config) (int, error) {
 		Prefix: aws.String("receipts/"),
 	}
 	if err := svc.ListObjectsV2Pages(i, f); err != nil {
-		return 0, err
+		return nil, err
 	}
-	return len(m), nil
+	return m, nil
 }
 
 func CountReceipts(c Config) error {
-	n, err := count(c)
+	m, err := loadReceipts(c)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%d receipts\n", n)
+	fmt.Printf("%d receipts\n", len(m))
 	return nil
 }
 
@@ -356,12 +356,12 @@ func ContactPatients(c Config) error {
 	log.Printf("running with limit dt = %v", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
-	receiptCount, err := count(c)
+	receipts, err := loadReceipts(c)
 	if err != nil {
 		return err
 	}
-	log.Printf("there are %d receipts", receiptCount)
-	availableContacts := len(allDecisions) - receiptCount
+	log.Printf("there are %d receipts", len(receipts))
+	availableContacts := len(allDecisions) - len(receipts)
 	if availableContacts > c.Quantity {
 		availableContacts = c.Quantity
 	}
@@ -382,6 +382,10 @@ func ContactPatients(c Config) error {
 				continue
 			}
 			log.Printf("--> updated decision: %s", d)
+		}
+		if receipts[d.Key()] {
+			log.Printf("already seen receipt for %s", d)
+			continue
 		}
 		done, err := alreadyDone(session, d)
 		if err != nil {
