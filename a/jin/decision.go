@@ -110,6 +110,10 @@ func (c Decision) Host() string {
 	return host
 }
 
+var blacklist = []string{
+	"+19176121039",
+}
+
 func IllegalNumber(n string) bool {
 	switch {
 	case strings.HasPrefix(n, "+8"):
@@ -123,6 +127,11 @@ func IllegalNumber(n string) bool {
 	case len(n) != 12:
 		// at least for now, stay away from dicey numbers
 		return true
+	}
+	for _, b := range blacklist {
+		if n == b {
+			return true
+		}
 	}
 	return false
 }
