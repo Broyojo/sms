@@ -124,7 +124,7 @@ func IllegalNumber(n string) bool {
 	case strings.HasPrefix(n, "+1787") || strings.HasPrefix(n, "+1939"):
 		// puerto rico
 		return true
-	case strings.HasPrefix(n, "+1211"):
+	case strings.HasPrefix(n, "+1211") || strings.HasPrefix(n, "+1735"):
 		// not valid area code!
 		return true
 	case strings.HasPrefix(n, "+15550") || strings.HasPrefix(n, "+15551"):
