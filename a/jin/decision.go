@@ -124,6 +124,12 @@ func IllegalNumber(n string) bool {
 	case strings.HasPrefix(n, "+1787") || strings.HasPrefix(n, "+1939"):
 		// puerto rico
 		return true
+	case strings.HasPrefix(n, "+1211"):
+		// not valid area code!
+		return true
+	case strings.HasPrefix(n, "+15550") || strings.HasPrefix(n, "+15551"):
+		// invalid area code parts
+		return true
 	case len(n) != 12:
 		// at least for now, stay away from dicey numbers
 		return true
