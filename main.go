@@ -313,7 +313,7 @@ func ContactPatients(c Config) error {
 		var filtered []jin.Decision
 		for _, d := range allDecisions {
 			if badHosts[d.Host()] {
-				log.Printf("skipping bad host in %s\n", d)
+				fmt.Printf("skipping bad host in %s\n", d)
 				continue
 			}
 			filtered = append(filtered, d)
@@ -352,17 +352,24 @@ func ContactPatients(c Config) error {
 		allDecisions[i], allDecisions[j] = allDecisions[j], allDecisions[i]
 	})
 
+	uniqueDecisions := make(map[string]bool)
+	for _, d := range allDecisions {
+		uniqueDecisions[d.Key()] = true
+	}
+
+	fmt.Printf("%d / %d unique decisions\n", len(uniqueDecisions), len(allDecisions))
+
 	dt := time.Duration(1 / c.Hertz * float64(time.Second))
-	log.Printf("running with limit dt = %v", dt)
+	fmt.Printf("running with limit dt = %v\n", dt)
 	limiter := rate.NewLimiter(rate.Every(dt), 1)
 
 	receipts, err := loadReceipts(c)
 	if err != nil {
 		return err
 	}
-	log.Printf("there are %d receipts", len(receipts))
+	fmt.Printf("there are %d receipts\n", len(receipts))
 	availableContacts := len(allDecisions) - len(receipts)
-	log.Printf("approximately %d decisions to go", availableContacts)
+	fmt.Printf("approximately %d decisions to go\n", availableContacts)
 	if availableContacts > c.Quantity {
 		availableContacts = c.Quantity
 	}
@@ -375,8 +382,6 @@ func ContactPatients(c Config) error {
 		if c.Prod {
 			WaitForWorkingHours()
 		}
-		fmt.Println()
-		log.Printf("%d/%d. decision: %s", 1+contactsMade, availableContacts, d)
 		if !c.Prod {
 			d.SetDebugging("+19176086254", "mra@xoba.com")
 			if d.SMS == nil {
@@ -385,9 +390,10 @@ func ContactPatients(c Config) error {
 			log.Printf("--> updated decision: %s", d)
 		}
 		if receipts[d.Key()] {
-			log.Printf("already seen receipt for %s", d)
 			continue
 		}
+		fmt.Println()
+		log.Printf("%d/%d. decision: %s", 1+contactsMade, availableContacts, d)
 		done, err := alreadyDone(session, d)
 		if err != nil {
 			return err
