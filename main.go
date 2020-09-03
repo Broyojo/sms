@@ -362,6 +362,7 @@ func ContactPatients(c Config) error {
 	}
 	log.Printf("there are %d receipts", len(receipts))
 	availableContacts := len(allDecisions) - len(receipts)
+	log.Printf("approximately %d decisions to go", availableContacts)
 	if availableContacts > c.Quantity {
 		availableContacts = c.Quantity
 	}
