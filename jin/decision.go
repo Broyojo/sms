@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/kevinburke/twilio-go"
-	"github.com/xoba/sms/a/saws"
-	"github.com/xoba/sms/a/stw"
+	"github.com/xoba/sms/saws"
+	"github.com/xoba/sms/stw"
 )
 
 func NewEmail(e Addr) Decision {

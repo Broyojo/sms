@@ -20,10 +20,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/ses"
-	"github.com/xoba/sms/a/jin"
-	"github.com/xoba/sms/a/saws"
-	"github.com/xoba/sms/a/stw"
-	"github.com/xoba/sms/a/task"
+	"github.com/xoba/sms/jin"
+	"github.com/xoba/sms/saws"
+	"github.com/xoba/sms/stw"
+	"github.com/xoba/sms/task"
 	"golang.org/x/time/rate"
 )
 
@@ -190,7 +190,7 @@ func WaitForWorkingHours() {
 
 func ContactPatients(c Config) error {
 	if c.Hertz > 2 {
-		return fmt.Errorf("too fast!")
+		return fmt.Errorf("too fast")
 	}
 	session, err := c.AWSSession()
 	if err != nil {
@@ -458,11 +458,6 @@ func markDone(session *session.Session, r *jin.Receipt) error {
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-}
-
-func dump(i interface{}) {
-	buf, _ := json.MarshalIndent(i, "", "  ")
-	fmt.Println(string(buf))
 }
 
 func TestMode(c Config) error {
