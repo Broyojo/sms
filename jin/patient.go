@@ -119,7 +119,7 @@ const (
 func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 	var contacts []ContactInfo
 
-	lines, err := LoadCSV(svc, "patients.csv")
+	lines, err := LoadCSV(svc)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func LoadContacts(svc *s3.S3) ([]ContactInfo, error) {
 	return contacts, nil
 }
 
-func LoadCSV(svc *s3.S3, filename string) ([][]string, error) {
+func LoadCSV(svc *s3.S3) ([][]string, error) {
 	resp, err := svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String("drjin"),
 		Key:    aws.String("patients.csv"),
