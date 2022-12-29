@@ -1,0 +1,10 @@
+{
+    "files.exclude": {
+        "**/*~":true,
+        "go.sum": true,
+        "**/.git": true,
+        "bin": true,
+        "sms": true,
+        "tmp": true
+    }
+}

@@ -1,5 +1,6 @@
 *~
 bin
+filter.sh
+message.mp3
 sms
 twilio.txt
-message.mp3
