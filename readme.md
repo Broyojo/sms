@@ -7,7 +7,7 @@ i could then share my automated solution with the world here, potentially helpin
 
 ## system overview:
 
-![system overview](graph.svg)
+![system overview](overview/graph.svg)
 
 ## technical details:
 
