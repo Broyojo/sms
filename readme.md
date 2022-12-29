@@ -1,4 +1,4 @@
-# Dr. Ann Jin Qiu patient outreach project
+# Dr. Ann Jin Qiu Patient Outreach Project
 
 Dr. Ann Jin Qiu was closing down her medical practice and thus had the obligation to notify her patients and shepherd them to their new medical provider. She wanted to pay me and others $10 per hour to contact her patients manually for this, but I instead recommended she let me automate the process, thereby making it much cheaper AND more reliable. Plus, I could then share my automated solution with the world here, potentially helping other doctors as well.
 
