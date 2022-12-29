@@ -5,6 +5,10 @@ them to their new medical provider. she wanted to pay me and other relatives $10
 instead recommended she let me automate the process, thereby making it much cheaper AND more reliable. plus,
 i could then share my automated solution with the world here, potentially helping other doctors as well.
 
+## system overview:
+
+![system overview](graph.svg)
+
 ## technical details:
 
 i used [aws/ses](https://aws.amazon.com/ses/) for sending emails, 

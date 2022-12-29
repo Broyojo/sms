@@ -1,0 +1,38 @@
+digraph {
+
+rankdir=LR;
+  contacts [shape=box, style=filled, fillcolor="#C8E6C9" ];
+  contacts -> processor;
+
+  status -> processor;
+
+configuration [shape=box];
+  configuration -> processor;
+
+  processor -> decisions;
+
+  decisions [ shape=box ];
+
+ sms [ shape=cds ];
+ text [ shape=cds ];
+ email [ shape=cds ];
+ 
+  decisions -> sms;
+  decisions -> text;
+  decisions -> email;
+
+  sms -> twilio;
+  text -> twilio;
+
+ses [label="aws/ses"];
+  email -> ses;
+
+patient [shape=doubleoctagon, style=filled, fillcolor="#FFCDD2" ];
+  twilio -> patient;
+  ses -> patient;
+
+  status [ shape=diamond ];
+twilio -> status [ style=dashed ];
+ses -> status [ style=dashed ];
+
+}
